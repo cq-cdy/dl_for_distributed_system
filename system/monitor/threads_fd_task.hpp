@@ -3,8 +3,8 @@ struct ThreadsAndFdTask : public MonitorTask {
     ThreadsAndFdTask() {}
     std::string describe() const noexcept override { return "threads_and_fd"; }
 
-    virtual nlohmann::json get_host_data() override { return {}; }
-    virtual nlohmann::json get_pid_data() override {
+    virtual nlohmann::json get_host_data_() override { return {}; }
+    virtual nlohmann::json get_pid_data_() override {
         int thread_count = 0;
         nlohmann::json ret{};
         auto path = "/proc/" + std::to_string(pid_) + "/task";

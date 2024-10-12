@@ -1,3 +1,4 @@
+#pragma once
 #include <chrono>
 
 #include "./collection_instance.hpp"
@@ -12,7 +13,7 @@ template <class DATA_T>
 class MonitorInstance {
    public:
     explicit MonitorInstance(
-        std::string path, int max_size = 1 << 4,
+        std::string path, int max_size = 1 << 15,
         int max_io_thread_count_ = std::thread::hardware_concurrency() << 1,
         std::string data_file_name = "system_runtime.data") {
         collection_instance_ptr_ = new CollectionInstance<DATA_T>(
@@ -32,18 +33,49 @@ class MonitorInstance {
         this->system_push(&handler);
     }
 
+    template <class Handler = std::nullptr_t>
+        requires std::is_convertible<Handler, MonitorTask>::value ||
+                 std::is_same<Handler, std::nullptr_t>::value
+    void record_batch(Handler* handler = nullptr) {
+        nlohmann::json data{};
+        data["type"] = "batch";
+        std::vector<MonitorTask*> tasks{&disk_task_,    &cpu_task_,
+                                        &mem_task_,     &thread_fd_task_,
+                                        &network_task_, &ctx_swtich_task_};
+        if constexpr (!std::is_same<Handler, std::nullptr_t>::value) {
+            tasks.push_back(dynamic_cast<MonitorTask*>(handler));
+        }
+
+        for (auto task_ptr_ : tasks) {
+            if (task_ptr_ == nullptr) {
+                continue;
+            }
+            auto role = task_ptr_->describe();
+            auto __data = task_ptr_->get_pid_data();
+            if (__data.size() > 1) {
+                data[role]["process"] = __data;
+            }
+            __data = task_ptr_->get_host_data();
+            if (__data.size() > 1) {
+                data[role]["host"] = __data;
+            }
+        }
+        this->push(data);
+    }
     ~MonitorInstance() { delete collection_instance_ptr_; }
 
    private:
     void system_push(MonitorTask* sys_task) {
         auto data = sys_task->get_pid_data();
-        data["type"] = sys_task->describe();
+        data["role"] = sys_task->describe();
         if (data.size() > 0) {
-            this->push(std::move(data));
+            data["type"] = "process";
+            this->push(data);
         }
         data = sys_task->get_host_data();
         if (data.size() > 0) {
-            this->push(std::move(data));
+            data["type"] = "host";
+            this->push(data);
         }
     }
     void push(nlohmann::json data) {

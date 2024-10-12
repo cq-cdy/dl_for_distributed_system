@@ -8,26 +8,36 @@ struct ContextSwitchTask : public MonitorTask {
                       << std::endl;
         }
     }
-    std::string describe() const noexcept override { return "context_switches"; }
+    std::string describe() const noexcept override {
+        return "context_switches";
+    }
 
-    virtual nlohmann::json get_host_data() override { return {}; }
-    virtual nlohmann::json get_pid_data() override {
+    virtual nlohmann::json get_host_data_() override { return {}; }
+    virtual nlohmann::json get_pid_data_() override {
         this->pid_status_file_.clear();
         this->pid_status_file_.seekg(0, std::ios::beg);
         nlohmann::json ret;
         std::string line;
-        std::getline(pid_status_file_, line);
-        std::istringstream iss(line);
-        std::vector<std::string> tokens(std::istream_iterator<std::string>{iss},
-                                        std::istream_iterator<std::string>());
-        if (tokens.size() > 17) {
-            ret["minflt"] =
-                std::stoi(tokens[9]);  // minor faults 不需要从硬盘加载页面
-            ret["majflt"] =
-                std::stoi(tokens[11]);  // major faults 需要从硬盘加载页面
-            ret["nvcsw"] = std::stoi(tokens[19]);  // voluntary context switches
-            ret["nivcsw"] =
-                std::stoi(tokens[20]);  // involuntary context switches
+        while (std::getline(pid_status_file_, line)) {
+            std::istringstream iss(line);
+            std::string key;
+            std::getline(iss, key, ':');
+            iss >> std::ws;  // 跳过冒号后的所有空格
+            std::string value;
+            std::getline(iss, value);  // 读取剩余部分作为value
+
+            // std::cout << "Key: '" << key << "' Value: '" << value << "'"
+            //           << std::endl;
+
+            if (key == "voluntary_ctxt_switches") {
+                ret["nvcsw"] = std::stoi(value);
+            } else if (key == "nonvoluntary_ctxt_switches") {
+                ret["nivcsw"] = std::stoi(value);
+            } else if (key == "minflt") {
+                ret["minflt"] = std::stoi(value);
+            } else if (key == "majflt") {
+                ret["majflt"] = std::stoi(value);
+            }
         }
         return ret;
     }

@@ -23,8 +23,8 @@ class CPUTask : public MonitorTask {
     }
     std::string describe() const noexcept override { return "cpu"; }
 
-    virtual nlohmann::json get_host_data() override { return {}; }
-    virtual nlohmann::json get_pid_data() override {
+    virtual nlohmann::json get_host_data_() override { return {}; }
+    virtual nlohmann::json get_pid_data_() override {
         std::lock_guard lock(this->mtx_);
         this->pid_status_file_.clear();
         this->status_file_.clear();

@@ -17,7 +17,7 @@ struct MemoryTask : public MonitorTask {
     void reset() {}
     std::string describe() const noexcept override { return "memory"; }
 
-    virtual nlohmann::json get_host_data() override {
+    virtual nlohmann::json get_host_data_() override {
         this->status_file_.clear();
         status_file_.seekg(0, std::ios::beg);
         nlohmann::json ret{};
@@ -38,7 +38,7 @@ struct MemoryTask : public MonitorTask {
         }
         return ret;
     }
-    virtual nlohmann::json get_pid_data() override {
+    virtual nlohmann::json get_pid_data_() override {
         this->pid_status_file_.clear();
         this->pid_status_file_.seekg(0, std::ios::beg);
         nlohmann::json ret{};

@@ -12,8 +12,8 @@ struct NetWorkTask : public MonitorTask {
     }
     std::string describe() const noexcept override { return "network"; }
 
-    virtual nlohmann::json get_host_data() override { return {}; }
-    virtual nlohmann::json get_pid_data() override {
+    virtual nlohmann::json get_host_data_() override { return {}; }
+    virtual nlohmann::json get_pid_data_() override {
         this->pid_status_file_.clear();
         this->pid_status_file_.seekg(0, std::ios::beg);
         nlohmann::json ret{};
