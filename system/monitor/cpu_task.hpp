@@ -3,6 +3,7 @@
 class CPUTask : public MonitorTask {
    public:
     CPUTask() {
+        last_tp_ = std::chrono::_V2::system_clock::time_point();
         status_file_ = std::ifstream("/proc/stat");
         if (!status_file_.is_open()) {
             std::cerr << "/proc/stat" << std::endl;
@@ -26,6 +27,13 @@ class CPUTask : public MonitorTask {
     virtual nlohmann::json get_host_data_() override { return {}; }
     virtual nlohmann::json get_pid_data_() override {
         std::lock_guard lock(this->mtx_);
+        auto now = std::chrono::high_resolution_clock::now();
+        auto distance =
+            duration_cast<std::chrono::duration<double>>(now - last_tp_)
+                .count();
+        if(distance < cal_cpu_interval){
+            return last_json_;
+        }
         this->pid_status_file_.clear();
         this->status_file_.clear();
         this->pid_status_file_.seekg(0, std::ios::beg);
@@ -33,18 +41,24 @@ class CPUTask : public MonitorTask {
         std::vector<CPUData> secondSample;
         ProcessCPUData secondProcSample = readProcessCPUData();
         readSystemCPUData(secondSample);
-        nlohmann::json ret;
         for (size_t i = 0; i < firstSample.size(); i++) {
             auto pair = calculateCPUUsage(firstSample[i], secondSample[i],
                                           firstProcSample, secondProcSample);
-            ret[pair.first] = pair.second;
+            // std::cout << "first:" << pair.first << " sec :" << pair.second
+            //           << std::endl;
+            last_json_[pair.first] = pair.second;
         }
         firstSample = secondSample;
         firstProcSample = secondProcSample;
-        return ret;
+        last_tp_ = now;
+        
+        return last_json_;
     }
 
    private:
+    double cal_cpu_interval  = 0.8;
+    nlohmann::json last_json_;
+    std::chrono::_V2::system_clock::time_point last_tp_{};
     std::mutex mtx_;
     std::ifstream status_file_;
     std::ifstream pid_status_file_;

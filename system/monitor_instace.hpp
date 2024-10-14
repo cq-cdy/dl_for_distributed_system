@@ -13,7 +13,7 @@ template <class DATA_T>
 class MonitorInstance {
    public:
     explicit MonitorInstance(
-        std::string path, int max_size = 1 << 15,
+        std::string path, int max_size = 1 << 14,
         int max_io_thread_count_ = std::thread::hardware_concurrency() << 1,
         std::string data_file_name = "system_runtime.data") {
         collection_instance_ptr_ = new CollectionInstance<DATA_T>(
@@ -81,6 +81,7 @@ class MonitorInstance {
     void push(nlohmann::json data) {
         data["timestamp"] = timestamp();
         this->collection_instance_ptr_->push(data.dump(4));
+
     }
     inline static std::string timestamp() noexcept {
         auto now = std::chrono::high_resolution_clock::now();
