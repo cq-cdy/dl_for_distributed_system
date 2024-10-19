@@ -12,8 +12,8 @@
 template <class DATA_T>
 class MonitorInstance {
    public:
-    explicit MonitorInstance(
-        std::string path, int max_size = 1 << 14,
+    MonitorInstance(
+        std::string path, int max_size = 1 << 16,
         int max_io_thread_count_ = std::thread::hardware_concurrency() << 1,
         std::string data_file_name = "system_runtime.data") {
         collection_instance_ptr_ = new CollectionInstance<DATA_T>(
@@ -36,14 +36,16 @@ class MonitorInstance {
     template <class Handler = std::nullptr_t>
         requires std::is_convertible<Handler, MonitorTask>::value ||
                  std::is_same<Handler, std::nullptr_t>::value
-    void record_batch(Handler* handler = nullptr) {
+    void record_batch(std::vector<Handler*> handlers) {
         nlohmann::json data{};
         data["type"] = "batch";
         std::vector<MonitorTask*> tasks{&disk_task_,    &cpu_task_,
                                         &mem_task_,     &thread_fd_task_,
                                         &network_task_, &ctx_swtich_task_};
         if constexpr (!std::is_same<Handler, std::nullptr_t>::value) {
-            tasks.push_back(dynamic_cast<MonitorTask*>(handler));
+            for (auto& handler : handlers) {
+                tasks.push_back(dynamic_cast<MonitorTask*>(handler));
+            }
         }
 
         for (auto task_ptr_ : tasks) {
@@ -81,7 +83,6 @@ class MonitorInstance {
     void push(nlohmann::json data) {
         data["timestamp"] = timestamp();
         this->collection_instance_ptr_->push(data.dump(4));
-
     }
     inline static std::string timestamp() noexcept {
         auto now = std::chrono::high_resolution_clock::now();
@@ -101,5 +102,4 @@ class MonitorInstance {
     NetWorkTask network_task_;
     ContextSwitchTask ctx_swtich_task_;
     CollectionInstance<std::string>* collection_instance_ptr_;
-    //
 };
